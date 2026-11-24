@@ -3,6 +3,8 @@ package algorithms;
 import graph.Edge;
 import graph.Graph;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -32,12 +34,32 @@ public final class Kruskal {
      * @return les arêtes de l'arbre couvrant minimal
      */
     public static List<Edge> computeMST(Graph graph) {
-        // TODO : implanter l'algorithme de Kruskal.
-        //   1. copier et trier les arêtes par poids croissant ;
-        //   2. créer un FastUnionFind sur les sommets ;
-        //   3. pour chaque arête : si ses extrémités sont dans deux composantes distinctes,
-        //      la retenir et fusionner les composantes ;
-        //   4. arrêter à V - 1 arêtes ; signaler clairement un graphe non connexe.
-        throw new UnsupportedOperationException("TODO : Kruskal.computeMST() n'est pas encore implantée.");
+        int n = graph.getVertexCount();
+        List<Edge> tree = new ArrayList<>();
+        if (n == 0) {
+            return tree;
+        }
+
+        List<Edge> edges = new ArrayList<>(graph.getEdges());
+        Collections.sort(edges);
+
+        FastUnionFind uf = new FastUnionFind(n);
+        for (Edge e : edges) {
+            int u = e.getSource();
+            int v = e.getDestination();
+            if (!uf.connected(u, v)) {
+                uf.union(u, v);
+                tree.add(e);
+                if (tree.size() == n - 1) {
+                    break;
+                }
+            }
+        }
+
+        if (tree.size() != n - 1) {
+            throw new IllegalArgumentException("Graphe non connexe : seulement "
+                    + tree.size() + " arêtes trouvées au lieu de " + (n - 1) + ".");
+        }
+        return tree;
     }
 }

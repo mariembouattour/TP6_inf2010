@@ -35,9 +35,17 @@ public class FastUnionFind {
      * rencontrés sur le chemin vers la racine doivent pointer directement vers elle.</p>
      */
     public int find(int x) {
-        // TODO : implanter find avec compression de chemin.
-        //   Conseil : appeler checkIndex(x) en premier.
-        throw new UnsupportedOperationException("TODO : FastUnionFind.find() n'est pas encore implantée.");
+        checkIndex(x);
+        int root = x;
+        while (parent[root] != root) {
+            root = parent[root];
+        }
+        while (parent[x] != root) {
+            int next = parent[x];
+            parent[x] = root;
+            x = next;
+        }
+        return root;
     }
 
     /**
@@ -48,8 +56,19 @@ public class FastUnionFind {
      * Ne fait rien si {@code x} et {@code y} sont déjà dans le même ensemble.</p>
      */
     public void union(int x, int y) {
-        // TODO : implanter union avec union par rang (utiliser find).
-        throw new UnsupportedOperationException("TODO : FastUnionFind.union() n'est pas encore implantée.");
+        int rootX = find(x);
+        int rootY = find(y);
+        if (rootX == rootY) {
+            return;
+        }
+        if (rank[rootX] < rank[rootY]) {
+            parent[rootX] = rootY;
+        } else if (rank[rootX] > rank[rootY]) {
+            parent[rootY] = rootX;
+        } else {
+            parent[rootY] = rootX;
+            rank[rootX]++;
+        }
     }
 
     /** Retourne {@code true} si {@code x} et {@code y} sont dans le même ensemble. (Fournie.) */

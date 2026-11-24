@@ -3,7 +3,9 @@ package algorithms;
 import graph.Edge;
 import graph.Graph;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * Algorithme de Prim avec liste d'adjacence et file de priorité (monceau binaire).
@@ -35,12 +37,40 @@ public final class Prim {
      * @return les arêtes de l'arbre couvrant minimal
      */
     public static List<Edge> computeMST(Graph graph) {
-        // TODO : implanter l'algorithme de Prim.
-        //   1. choisir un sommet de départ et le marquer comme visité ;
-        //   2. ajouter ses arêtes dans la file de priorité ;
-        //   3. retirer l'arête de poids minimal ; si elle mène à un sommet déjà visité, l'ignorer ;
-        //   4. sinon l'ajouter à l'arbre, visiter le nouveau sommet et ajouter ses arêtes candidates ;
-        //   5. répéter jusqu'à V - 1 arêtes ; signaler clairement un graphe non connexe.
-        throw new UnsupportedOperationException("TODO : Prim.computeMST() n'est pas encore implantée.");
+        int n = graph.getVertexCount();
+        List<Edge> tree = new ArrayList<>();
+        if (n == 0) {
+            return tree;
+        }
+
+        boolean[] visited = new boolean[n];
+        PriorityQueue<Edge> pq = new PriorityQueue<>();
+
+        visit(graph, 0, visited, pq);
+
+        while (tree.size() < n - 1 && !pq.isEmpty()) {
+            Edge e = pq.poll();
+            int v = e.getDestination();
+            if (visited[v]) {
+                continue;
+            }
+            tree.add(e);
+            visit(graph, v, visited, pq);
+        }
+
+        if (tree.size() != n - 1) {
+            throw new IllegalArgumentException("Graphe non connexe : seulement "
+                    + (tree.size() + 1) + " sommets atteints sur " + n + ".");
+        }
+        return tree;
+    }
+
+    private static void visit(Graph graph, int v, boolean[] visited, PriorityQueue<Edge> pq) {
+        visited[v] = true;
+        for (Edge e : graph.getNeighbors(v)) {
+            if (!visited[e.getDestination()]) {
+                pq.add(e);
+            }
+        }
     }
 }
