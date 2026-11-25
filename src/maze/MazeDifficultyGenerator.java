@@ -1,6 +1,14 @@
 package maze;
 
+import algorithms.Kruskal;
+import algorithms.MazeDFS;
+import algorithms.Prim;
+import graph.Edge;
 import graph.Graph;
+import graph.GridGraphFactory;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * BONUS — génération d'un labyrinthe selon un niveau de difficulté.
@@ -14,6 +22,11 @@ public final class MazeDifficultyGenerator {
 
     /** Nombre maximal de labyrinthes candidats à essayer (garantit que la méthode termine). */
     public static final int MAX_ATTEMPTS = 50;
+
+    private static final double EASY_MAX_RATIO = 1.3;
+    private static final double MEDIUM_MIN_RATIO = 1.6;
+    private static final double MEDIUM_MAX_RATIO = 2.5;
+    private static final double HARD_MIN_RATIO = 3.0;
 
     private MazeDifficultyGenerator() {
     }
@@ -48,7 +61,109 @@ public final class MazeDifficultyGenerator {
      */
     public static Maze generate(Graph graph, Difficulty difficulty, long seed) {
         // TODO (bonus) : implanter la génération selon la difficulté.
-        throw new UnsupportedOperationException(
-                "TODO : MazeDifficultyGenerator.generate() (bonus) n'est pas encore implantée.");
+        if (graph == null || !graph.isGrid()) {
+            throw new IllegalArgumentException("Le graphe doit provenir d'une grille.");
+        }
+        int rows = graph.getRows();
+        int cols = graph.getCols();
+
+        Maze best = null;
+        double bestDistance = Double.POSITIVE_INFINITY;
+
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            List<Edge> edges = generateCandidate(graph, difficulty, seed, attempt);
+            Maze candidate = Maze.fromEdges(rows, cols, edges);
+            double distance = distanceToTarget(pathRatio(candidate), difficulty);
+            if (distance == 0) {
+                return candidate;
+            }
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    /** Produit les arêtes d'un candidat selon le niveau demandé et le numéro de tentative. */
+    private static List<Edge> generateCandidate(Graph graph, Difficulty difficulty, long seed, int attempt) {
+        long candidateSeed = seed + attempt;
+        switch (difficulty) {
+            case EASY:
+                return Kruskal.computeMST(weightedGraph(graph, candidateSeed, attempt));
+            case MEDIUM:
+                if (attempt % 2 == 0) {
+                    return Prim.computeMST(weightedGraph(graph, candidateSeed, attempt));
+                }
+                return MazeDFS.generate(graph, candidateSeed);
+            case HARD:
+                return MazeDFS.generate(graph, candidateSeed);
+            default:
+                throw new IllegalArgumentException("Difficulté inconnue : " + difficulty);
+        }
+    }
+
+    /** Graphe reçu pour la première tentative, puis la même grille avec des poids régénérés. */
+    private static Graph weightedGraph(Graph graph, long candidateSeed, int attempt) {
+        if (attempt == 0) {
+            return graph;
+        }
+        return GridGraphFactory.generate(graph.getRows(), graph.getCols(), candidateSeed);
+    }
+
+    /** Distance entre le ratio et l'intervalle du niveau (0 si le ratio est dans l'intervalle). */
+    private static double distanceToTarget(double ratio, Difficulty difficulty) {
+        switch (difficulty) {
+            case EASY:
+                return Math.max(0, ratio - EASY_MAX_RATIO);
+            case MEDIUM:
+                return Math.max(0, Math.max(MEDIUM_MIN_RATIO - ratio, ratio - MEDIUM_MAX_RATIO));
+            case HARD:
+                return Math.max(0, HARD_MIN_RATIO - ratio);
+            default:
+                throw new IllegalArgumentException("Difficulté inconnue : " + difficulty);
+        }
+    }
+
+    /** Ratio R = longueur du chemin entrée-sortie (en cellules) / (rows + cols - 1). */
+    private static double pathRatio(Maze maze) {
+        int minimalLength = maze.getRows() + maze.getCols() - 1;
+        return (double) pathLength(maze) / minimalLength;
+    }
+
+    /** Nombre de cellules du chemin unique entre l'entrée et la sortie (parcours en largeur). */
+    private static int pathLength(Maze maze) {
+        int rows = maze.getRows();
+        int cols = maze.getCols();
+        int cellCount = rows * cols;
+        int[] distance = new int[cellCount];
+        Arrays.fill(distance, -1);
+        int[] queue = new int[cellCount];
+        int head = 0;
+        int tail = 0;
+        queue[tail++] = maze.getEntrance();
+        distance[maze.getEntrance()] = 1;
+
+        while (head < tail) {
+            int cell = queue[head++];
+            if (cell == maze.getExit()) {
+                return distance[cell];
+            }
+            int row = cell / cols;
+            int col = cell % cols;
+            int[] neighbors = {
+                    col + 1 < cols ? cell + 1 : -1,
+                    col > 0 ? cell - 1 : -1,
+                    row + 1 < rows ? cell + cols : -1,
+                    row > 0 ? cell - cols : -1
+            };
+            for (int next : neighbors) {
+                if (next >= 0 && distance[next] == -1 && maze.isPassageOpen(cell, next)) {
+                    distance[next] = distance[cell] + 1;
+                    queue[tail++] = next;
+                }
+            }
+        }
+        throw new IllegalStateException("La sortie n'est pas accessible : le labyrinthe n'est pas parfait.");
     }
 }
